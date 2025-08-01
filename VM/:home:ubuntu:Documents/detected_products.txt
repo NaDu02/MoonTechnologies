@@ -1,0 +1,3 @@
+=== ERKANNTE PRODUKTE MIT PREISEN ===
+Format: Zeitstempel | Produktname | Preis(€) | Konfidenz(%) | Model-ID
+================================================================================

@@ -1,0 +1,43 @@
+{
+  "session_start": "2025-08-01T10:16:37.421642",
+  "total_products": 5,
+  "total_value": 4.95,
+  "products": [
+    {
+      "timestamp": "2025-08-01T10:17:01.327095",
+      "name": "Product_0",
+      "model_id": 0,
+      "price_euro": 0.99,
+      "confidence": 0.55
+    },
+    {
+      "timestamp": "2025-08-01T10:17:08.471464",
+      "name": "Product_0",
+      "model_id": 0,
+      "price_euro": 0.99,
+      "confidence": 1.0
+    },
+    {
+      "timestamp": "2025-08-01T10:17:19.445711",
+      "name": "Product_0",
+      "model_id": 0,
+      "price_euro": 0.99,
+      "confidence": 0.4
+    },
+    {
+      "timestamp": "2025-08-01T10:17:28.140609",
+      "name": "Product_0",
+      "model_id": 0,
+      "price_euro": 0.99,
+      "confidence": 0.6
+    },
+    {
+      "timestamp": "2025-08-01T10:17:30.254648",
+      "name": "Product_0",
+      "model_id": 0,
+      "price_euro": 0.99,
+      "confidence": 0.95
+    }
+  ],
+  "last_update": "2025-08-01T10:17:30.254643"
+}

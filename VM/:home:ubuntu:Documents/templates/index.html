@@ -1,0 +1,1754 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fay Livestream</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+            color: white;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        .header {
+            text-align: center;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(15px);
+            border-bottom: 1px solid #333;
+        }
+
+        .header h1 {
+            font-size: 2.2em;
+            font-weight: 300;
+            margin-bottom: 8px;
+            background: linear-gradient(45deg, #4CAF50, #2196F3, #FF9800);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .status-bar {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 5px;
+            flex-wrap: wrap;
+        }
+
+        .status-item {
+            background: rgba(76, 175, 80, 0.2);
+            padding: 6px 14px;
+            border-radius: 20px;
+            border: 1px solid #4CAF50;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .status-item.error {
+            background: rgba(244, 67, 54, 0.2);
+            border-color: #f44336;
+        }
+
+        .status-item.warning {
+            background: rgba(255, 152, 0, 0.2);
+            border-color: #FF9800;
+        }
+
+        .status-item.cart-active {
+            background: rgba(255, 152, 0, 0.3);
+            border-color: #FF9800;
+            font-weight: bold;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(255, 152, 0, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(255, 152, 0, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 152, 0, 0); }
+        }
+
+        .main-container {
+            display: grid;
+            grid-template-columns: 1fr 450px;
+            gap: 15px;
+            padding: 15px;
+            height: calc(100vh - 120px);
+        }
+
+        .video-section {
+            position: relative;
+            background: #000;
+            border-radius: 15px;
+            overflow: hidden;
+            border: 2px solid #333;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            min-height: 400px;
+        }
+
+        /* Method 1: Canvas Stream */
+        #videoCanvas {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            background: #000;
+            display: none;
+        }
+
+        /* Method 2: Image Stream */
+        #streamImage {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            background: #000;
+            display: none;
+        }
+
+        /* Method 3: WebRTC with Fallback */
+        #webrtcVideo {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            background: #000;
+            display: none;
+        }
+
+        /* Method 4: Server-Side Stream */
+        #mjpegStream {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            background: #000;
+            display: none;
+        }
+
+        .video-placeholder {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: #666;
+            z-index: 5;
+        }
+
+        .video-controls {
+            position: absolute;
+            bottom: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px 15px;
+            border-radius: 25px;
+            backdrop-filter: blur(10px);
+            z-index: 20;
+        }
+
+        .video-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .video-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .video-btn.active {
+            background: rgba(76, 175, 80, 0.5);
+            border-color: #4CAF50;
+        }
+
+        .method-selector {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px;
+            border-radius: 10px;
+            z-index: 30;
+        }
+
+        .method-selector select {
+            background: rgba(45, 45, 45, 0.9);
+            color: white;
+            border: 1px solid #555;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 12px;
+        }
+
+        .face-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .face-box {
+            position: absolute;
+            border: 3px solid #4CAF50;
+            border-radius: 8px;
+            background: rgba(76, 175, 80, 0.1);
+            backdrop-filter: blur(2px);
+            transition: all 0.2s ease;
+        }
+
+        .face-label {
+            position: absolute;
+            bottom: -35px;
+            left: 0;
+            background: rgba(76, 175, 80, 0.9);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
+        .control-panel {
+            background: rgba(45, 45, 45, 0.95);
+            backdrop-filter: blur(15px);
+            border-radius: 15px;
+            padding: 20px;
+            border: 1px solid #555;
+            display: flex;
+            flex-direction: column;
+            max-height: 100%;
+            overflow-y: auto;
+        }
+
+        .action-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: white;
+            border: none;
+            padding: 10px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(76, 175, 80, 0.4);
+        }
+
+        .btn.secondary {
+            background: linear-gradient(135deg, #666, #555);
+        }
+
+        .btn.danger {
+            background: linear-gradient(135deg, #f44336, #d32f2f);
+        }
+
+        .btn.cart {
+            background: linear-gradient(135deg, #FF9800, #F57C00);
+        }
+
+        .btn.cart:hover {
+            box-shadow: 0 5px 15px rgba(255, 152, 0, 0.4);
+        }
+
+        .btn.debug {
+            background: linear-gradient(135deg, #9C27B0, #7B1FA2);
+        }
+
+        .recognition-display {
+            background: linear-gradient(135deg, #2d2d2d, #3d3d3d);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 15px;
+            border: 2px solid #555;
+            flex-shrink: 0;
+        }
+
+        .user-name {
+            font-size: 1.8em;
+            font-weight: 600;
+            margin-bottom: 8px;
+            min-height: 1.2em;
+        }
+
+        .confidence {
+            font-size: 1em;
+            opacity: 0.9;
+            margin-bottom: 6px;
+            font-weight: 500;
+        }
+
+        .timestamp {
+            font-size: 1.1em;
+            opacity: 0.7;
+            font-family: 'Courier New', monospace;
+            margin-bottom: 5px;
+        }
+
+        /* WARENKORB PANEL - ERWEITERT */
+        .cart-panel {
+            background: rgba(26, 26, 26, 0.8);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 12px;
+            border: 1px solid #333;
+            max-height: 280px;
+            overflow-y: auto;
+            transition: all 0.3s ease;
+        }
+
+        .cart-panel.has-products {
+            border-color: #FF9800;
+            background: rgba(255, 152, 0, 0.1);
+            box-shadow: 0 0 20px rgba(255, 152, 0, 0.2);
+        }
+
+        .cart-title {
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #FF9800;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .cart-total {
+            font-size: 16px;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+
+        .cart-item {
+            background: rgba(45, 45, 45, 0.6);
+            padding: 8px 12px;
+            border-radius: 6px;
+            margin-bottom: 6px;
+            font-size: 13px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.2s ease;
+        }
+
+        .cart-item:hover {
+            background: rgba(255, 152, 0, 0.1);
+            transform: translateX(2px);
+        }
+
+        .cart-item-info {
+            flex: 1;
+        }
+
+        .cart-item-name {
+            font-weight: bold;
+            color: #FF9800;
+            flex: 1;
+        }
+
+        .cart-item-details {
+            font-size: 11px;
+            opacity: 0.7;
+            margin-top: 2px;
+        }
+
+        .cart-item-price {
+            font-weight: bold;
+            color: #4CAF50;
+            margin-left: 10px;
+        }
+
+        .cart-empty {
+            text-align: center;
+            opacity: 0.7;
+            font-style: italic;
+            padding: 20px;
+        }
+
+        .cart-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .cart-btn {
+            flex: 1;
+            background: linear-gradient(135deg, #FF9800, #F57C00);
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .cart-btn.clear {
+            background: linear-gradient(135deg, #666, #555);
+        }
+
+        .cart-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 3px 10px rgba(255, 152, 0, 0.3);
+        }
+
+        .cart-summary {
+            background: rgba(255, 152, 0, 0.1);
+            border-radius: 8px;
+            padding: 8px 12px;
+            margin-bottom: 10px;
+            font-size: 12px;
+        }
+
+        .stats-panel {
+            background: rgba(26, 26, 26, 0.8);
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 12px;
+            border: 1px solid #333;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            text-align: center;
+        }
+
+        .stat-item {
+            background: rgba(45, 45, 45, 0.6);
+            padding: 10px;
+            border-radius: 8px;
+        }
+
+        .stat-value {
+            font-size: 1.4em;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+
+        .stat-label {
+            font-size: 0.75em;
+            opacity: 0.7;
+            margin-top: 4px;
+        }
+
+        .stream-indicator {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: rgba(244, 67, 54, 0.9);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            z-index: 20;
+        }
+
+        .stream-indicator.active {
+            background: rgba(76, 175, 80, 0.9);
+        }
+
+        /* Payment Dialog - ERWEITERT */
+        .payment-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+
+        .payment-dialog {
+            background: linear-gradient(135deg, #2196F3, #1976D2);
+            border-radius: 20px;
+            padding: 35px;
+            text-align: center;
+            min-width: 450px;
+            max-width: 90vw;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            max-height: 90vh;
+            overflow-y: auto;
+            animation: dialogAppear 0.3s ease-out;
+        }
+
+        @keyframes dialogAppear {
+            from { opacity: 0; transform: scale(0.8); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        .payment-user {
+            font-size: 2.2em;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .payment-confidence {
+            margin-bottom: 20px;
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+
+        .payment-products {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 15px;
+            margin: 15px 0;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .payment-products-title {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #FF9800;
+        }
+
+        .payment-product-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0;
+            font-size: 0.9em;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .payment-product-item:last-child {
+            border-bottom: none;
+        }
+
+        .payment-total {
+            border-top: 2px solid rgba(255, 255, 255, 0.3);
+            margin-top: 10px;
+            padding-top: 10px;
+            font-size: 1.4em;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+
+        .amount-selector {
+            margin: 15px 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .amount-input {
+            font-size: 2.5em;
+            font-weight: 600;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+            padding: 8px 16px;
+            color: white;
+            text-align: center;
+            width: 150px;
+        }
+
+        .euro-symbol {
+            font-size: 2.5em;
+            font-weight: 600;
+        }
+
+        .quick-amounts {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+
+        .quick-amount {
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 8px 14px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            font-size: 0.9em;
+        }
+
+        .quick-amount.selected {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: rgba(255, 255, 255, 0.6);
+            transform: scale(1.05);
+        }
+
+        .payment-mode-selector {
+            margin: 15px 0;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .payment-mode {
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+
+        .payment-mode.selected {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: rgba(255, 255, 255, 0.6);
+            transform: scale(1.05);
+        }
+
+        .payment-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin-top: 25px;
+        }
+
+        .payment-btn {
+            padding: 12px 25px;
+            border-radius: 10px;
+            border: none;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .payment-btn.confirm {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: white;
+        }
+
+        .payment-btn.confirm:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 20px rgba(76, 175, 80, 0.4);
+        }
+
+        .payment-btn.cancel {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #4CAF50;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(76, 175, 80, 0.4);
+            z-index: 3000;
+            display: none;
+            font-weight: 500;
+            font-size: 14px;
+            animation: notificationSlide 0.3s ease-out;
+        }
+
+        @keyframes notificationSlide {
+            from { transform: translateX(-50%) translateY(-100%); }
+            to { transform: translateX(-50%) translateY(0); }
+        }
+
+        .notification.error {
+            background: #f44336;
+            box-shadow: 0 5px 15px rgba(244, 67, 54, 0.4);
+        }
+
+        .notification.info {
+            background: #2196F3;
+            box-shadow: 0 5px 15px rgba(33, 150, 243, 0.4);
+        }
+
+        .notification.warning {
+            background: #FF9800;
+            box-shadow: 0 5px 15px rgba(255, 152, 0, 0.4);
+        }
+
+        @media (max-width: 968px) {
+            .main-container {
+                grid-template-columns: 1fr;
+                grid-template-rows: 1fr auto;
+            }
+            
+            .control-panel {
+                max-height: 320px;
+                overflow-y: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Fay Livestream</h1>
+        <div class="status-bar">
+            <div class="status-item" id="connectionStatus">🔌 Verbindung wird hergestellt...</div>
+            <div class="status-item" id="streamStatus">📹 Stream wird geladen...</div>
+            <div class="status-item" id="methodStatus">🔧 Canvas Method</div>
+            <div class="status-item" id="fpsStatus">📊 0 FPS</div>
+            <div class="status-item" id="cartStatus">🛒 Warenkorb: 0 Artikel</div>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <div class="video-section">
+            <div class="stream-indicator" id="streamIndicator">🔴 OFFLINE</div>
+            
+            <!-- Method Selector -->
+            <div class="method-selector">
+                <select id="methodSelector" onchange="switchVideoMethod()">
+                    <option value="canvas">Canvas Stream (Empfohlen)</option>
+                    <option value="image">Image Stream</option>
+                    <option value="mjpeg">MJPEG Stream</option>
+                    <option value="websocket">WebSocket Images</option>
+                </select>
+            </div>
+
+            <div class="video-placeholder" id="videoPlaceholder">
+                <h3>📹 Video-Stream wird geladen...</h3>
+                <p>HTTP-kompatible Methode wird initialisiert...</p>
+            </div>
+
+            <!-- Method 1: Canvas (Default) -->
+            <canvas id="videoCanvas"></canvas>
+            
+            <!-- Method 2: Image Stream -->
+            <img id="streamImage" alt="Video Stream">
+            
+            <!-- Method 3: MJPEG -->
+            <img id="mjpegStream" alt="MJPEG Stream">
+            
+            <!-- Method 4: WebSocket Image -->
+            <img id="websocketImage" alt="WebSocket Stream">
+
+            <div class="face-overlay" id="faceOverlay"></div>
+            
+            <div class="video-controls">
+                <button class="video-btn" onclick="startStream()" id="startBtn">▶️ Start</button>
+                <button class="video-btn" onclick="stopStream()" id="stopBtn">⏹️ Stop</button>
+                <button class="video-btn" onclick="takeSnapshot()">📸 Foto</button>
+                <button class="video-btn" onclick="switchVideoMethod()">🔄 Switch</button>
+            </div>
+        </div>
+
+        <div class="control-panel">
+            <div class="action-buttons">
+                <button class="btn" onclick="testPaymentDialog()">💳 Test Payment</button>
+                <button class="btn secondary" onclick="window.open('/payment-setup', '_blank')">⚙️ Setup</button>
+                <button class="btn cart" onclick="payForCart()">🛒 Bezahlen</button>
+                <button class="btn danger" onclick="resetAll()">🔄 Reset</button>
+                <button class="btn debug" onclick="debugCartStatus()">🐛 Debug</button>
+                <button class="btn secondary" onclick="forceLoadCart()">🔄 Laden</button>
+            </div>
+
+            <div class="recognition-display" id="recognitionDisplay">
+                <div class="user-name" id="userName">Warte auf Stream...</div>
+                <div class="confidence" id="confidence">HTTP-Modus</div>
+                <div class="timestamp" id="timestamp">--:--:--</div>
+            </div>
+
+            <!-- WARENKORB PANEL - ERWEITERT -->
+            <div class="cart-panel" id="cartPanel">
+                <div class="cart-title">
+                    🛒 Warenkorb
+                    <span class="cart-total" id="cartTotal">0.00€</span>
+                </div>
+                
+                <div class="cart-summary" id="cartSummary" style="display: none;">
+                    <strong>Zusammenfassung:</strong> <span id="cartSummaryText"></span>
+                </div>
+                
+                <div id="cartContent">
+                    <div class="cart-empty">Keine Produkte im Warenkorb</div>
+                </div>
+                <div class="cart-actions" id="cartActions" style="display: none;">
+                    <button class="cart-btn" onclick="payForCart()">💳 Bezahlen</button>
+                    <button class="cart-btn clear" onclick="clearCart()">🗑️ Leeren</button>
+                </div>
+            </div>
+
+            <div class="stats-panel" id="statsPanel">
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-value" id="frameCount">0</div>
+                        <div class="stat-label">Frames erhalten</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="currentFps">0</div>
+                        <div class="stat-label">Aktuelle FPS</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="cartItemCount">0</div>
+                        <div class="stat-label">Warenkorb Artikel</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="cartValue">0.00€</div>
+                        <div class="stat-label">Warenkorb Wert</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payment Dialog - ERWEITERT -->
+    <div class="payment-overlay" id="paymentOverlay">
+        <div class="payment-dialog">
+            <div class="payment-user" id="paymentUser">Michi</div>
+            <div class="payment-confidence" id="paymentConfidence">Vertrauen: 85.5%</div>
+            
+            <!-- Produktanzeige im Payment Dialog -->
+            <div class="payment-products" id="paymentProducts" style="display: none;">
+                <div class="payment-products-title">🛒 Erkannte Produkte:</div>
+                <div id="paymentProductsList"></div>
+                <div class="payment-total" id="paymentProductTotal">Gesamt: 0.00€</div>
+            </div>
+            
+            <div class="payment-mode-selector">
+                <div class="payment-mode selected" onclick="selectPaymentMode('products')" id="modeProducts">
+                    🛒 Warenkorb bezahlen
+                </div>
+                <div class="payment-mode" onclick="selectPaymentMode('custom')" id="modeCustom">
+                    💰 Eigener Betrag
+                </div>
+            </div>
+            
+            <div id="customAmountSection">
+                <div class="amount-label">Betrag auswählen:</div>
+                <div class="amount-selector">
+                    <input type="number" class="amount-input" id="paymentAmount" value="5" step="0.5" min="0.5" max="100">
+                    <span class="euro-symbol">€</span>
+                </div>
+                
+                <div class="quick-amounts">
+                    <div class="quick-amount" onclick="setAmount(1)">1€</div>
+                    <div class="quick-amount" onclick="setAmount(2.5)">2.50€</div>
+                    <div class="quick-amount selected" onclick="setAmount(5)">5€</div>
+                    <div class="quick-amount" onclick="setAmount(10)">10€</div>
+                    <div class="quick-amount" onclick="setAmount(20)">20€</div>
+                </div>
+            </div>
+            
+            <div class="payment-actions">
+                <button class="payment-btn confirm" onclick="confirmPayment()">💳 Bezahlen</button>
+                <button class="payment-btn cancel" onclick="cancelPayment()">❌ Abbrechen</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="notification" id="notification"></div>
+
+    <script>
+        // Global variables
+        let socket;
+        let currentMethod = 'canvas';
+        let streamActive = false;
+        let frameCount = 0;
+        let fpsCounter = 0;
+        let lastFpsUpdate = Date.now();
+        let canvas, ctx;
+        let currentPaymentData = null;
+        let currentCart = [];
+        let cartTotal = 0.0;
+        let cartSummary = null;
+        let paymentMode = 'products'; // 'products' or 'custom'
+
+        // Initialize
+        function init() {
+            console.log('🚀 Initializing Face Recognition + Warenkorb System...');
+            
+            setupCanvas();
+            setupSocket();
+            updateTimestamp();
+            
+            // Initiale Warenkorb-Ladung
+            setTimeout(() => {
+                console.log('📦 Loading initial cart status...');
+                loadCartStatus();
+            }, 2000);
+            
+            setInterval(updateTimestamp, 1000);
+            setInterval(updateFpsDisplay, 1000);
+            setInterval(loadCartStatus, 10000); // Warenkorb alle 10 Sekunden updaten
+            
+            console.log('✅ System initialized with enhanced cart integration');
+        }
+
+        function setupCanvas() {
+            canvas = document.getElementById('videoCanvas');
+            ctx = canvas.getContext('2d');
+            
+            // Set canvas size
+            canvas.width = 640;
+            canvas.height = 480;
+            
+            showVideoElement('canvas');
+        }
+
+        function setupSocket() {
+            console.log('🔌 Setting up Socket.IO connection...');
+            
+            socket = io({
+                reconnection: true,
+                reconnectionAttempts: 5,
+                reconnectionDelay: 1000
+            });
+            
+            socket.on('connect', () => {
+                console.log('✅ Connected to server');
+                updateConnectionStatus('Verbunden', 'success');
+                updateStreamIndicator(true);
+                showNotification('🎉 Server verbunden!', 'success');
+                
+                // Request initial cart status on connect
+                socket.emit('request_product_status');
+                
+                // Zusätzlich: REST API Fallback
+                setTimeout(loadCartStatusREST, 1000);
+            });
+            
+            socket.on('disconnect', () => {
+                console.log('❌ Disconnected from server');
+                updateConnectionStatus('Verbindung getrennt', 'error');
+                updateStreamIndicator(false);
+                showNotification('⚠️ Server-Verbindung unterbrochen', 'error');
+            });
+            
+            // Method 1: Canvas Stream via Socket.IO
+            socket.on('video_frame', (data) => {
+                if (currentMethod === 'canvas' && data.image) {
+                    drawImageToCanvas(data.image);
+                    frameCount++;
+                    fpsCounter++;
+                }
+            });
+            
+            // Recognition results
+            socket.on('recognition_result', (data) => {
+                updateRecognitionDisplay(data);
+                drawFaceBoxes(data);
+                
+                if (data.face_recognized) {
+                    console.log(`👤 ERKANNT: ${data.user_name} (${(data.confidence * 100).toFixed(1)}%)`);
+                }
+            });
+            
+            // Payment dialog mit erweiterten Warenkorb-Daten
+            socket.on('payment_dialog', (data) => {
+                console.log('💳 Payment dialog triggered:', data);
+                showPaymentDialog(data);
+            });
+
+            // ERWEITERTE WARENKORB EVENTS
+            socket.on('cart_update', (data) => {
+                console.log('🛒 Cart update received:', data);
+                updateCartDisplay(data.products, data.total_value, data.summary);
+            });
+
+            socket.on('products_available', (data) => {
+                console.log('🛒 Products available:', data);
+                updateCartDisplay(data.products, data.total_value, data.summary);
+                if (data.summary) {
+                    showNotification(`🛒 ${data.summary.unique_products} Produkttypen - ${data.total_value.toFixed(2)}€`, 'info');
+                } else {
+                    showNotification(`🛒 ${data.product_count} Produkte - ${data.total_value.toFixed(2)}€`, 'info');
+                }
+            });
+
+            socket.on('product_status', (data) => {
+                console.log('📦 Product status update:', data);
+                updateCartDisplay(data.products, data.total_value, data.summary);
+            });
+
+            socket.on('products_cleared', (data) => {
+                console.log('🗑️ Products cleared:', data);
+                updateCartDisplay([], 0);
+                showNotification('🛒 Warenkorb geleert', 'info');
+            });
+
+            socket.on('payment_triggered', (data) => {
+                console.log('💳 Payment triggered:', data);
+                if (data.status === 'success') {
+                    showNotification(`💳 Payment erfolgreich: ${data.amount.toFixed(2)}€`, 'success');
+                    // Warenkorb nach erfolgreichem Payment neu laden
+                    setTimeout(() => {
+                        socket.emit('request_product_status');
+                        loadCartStatusREST();
+                    }, 1000);
+                } else {
+                    showNotification(`❌ Payment fehlgeschlagen: ${data.message}`, 'error');
+                }
+            });
+
+            socket.on('clear_result', (data) => {
+                if (data.success) {
+                    showNotification('🛒 Warenkorb erfolgreich geleert', 'success');
+                } else {
+                    showNotification('❌ Fehler beim Leeren: ' + (data.message || 'Unbekannter Fehler'), 'error');
+                }
+            });
+        }
+
+        // VERBESSERTE WARENKORB-FUNKTIONEN
+        function loadCartStatus() {
+            if (socket && socket.connected) {
+                socket.emit('request_product_status');
+            } else {
+                // Fallback: REST API
+                loadCartStatusREST();
+            }
+        }
+
+        function loadCartStatusREST() {
+            fetch('/api/product_status')
+            .then(response => response.json())
+            .then(data => {
+                console.log('📦 REST Cart status loaded:', data);
+                updateCartDisplay(data.products || [], data.total_value || 0, data.summary);
+            })
+            .catch(error => {
+                console.warn('❌ Cart status load failed:', error);
+                showNotification('⚠️ Warenkorb-Status konnte nicht geladen werden', 'warning');
+            });
+        }
+
+        function forceLoadCart() {
+            console.log('🔄 Force loading cart...');
+            showNotification('🔄 Lade Warenkorb...', 'info');
+            
+            // Beide Methoden parallel verwenden
+            if (socket && socket.connected) {
+                socket.emit('request_product_status');
+            }
+            loadCartStatusREST();
+        }
+
+        function updateCartDisplay(products, totalValue, summary) {
+            currentCart = products || [];
+            cartTotal = totalValue || 0;
+            cartSummary = summary || null;
+            
+            const cartContent = document.getElementById('cartContent');
+            const cartTotalEl = document.getElementById('cartTotal');
+            const cartActions = document.getElementById('cartActions');
+            const cartPanel = document.getElementById('cartPanel');
+            const cartSummaryEl = document.getElementById('cartSummary');
+            const cartSummaryText = document.getElementById('cartSummaryText');
+            
+            console.log(`🛒 Updating cart display: ${currentCart.length} products, ${cartTotal}€`, summary);
+            
+            // Update total
+            cartTotalEl.textContent = `${cartTotal.toFixed(2)}€`;
+            
+            // Update stats
+            document.getElementById('cartItemCount').textContent = currentCart.length;
+            document.getElementById('cartValue').textContent = `${cartTotal.toFixed(2)}€`;
+            
+            // Update cart status in header
+            const cartStatus = document.getElementById('cartStatus');
+            if (summary && summary.unique_products) {
+                cartStatus.innerHTML = `🛒 Warenkorb: ${summary.unique_products} Produkttypen (${currentCart.length} gesamt)`;
+                
+                // Summary anzeigen
+                cartSummaryEl.style.display = 'block';
+                cartSummaryText.textContent = `${summary.unique_products} verschiedene Produkte, ${summary.total_items} Artikel`;
+            } else {
+                cartStatus.innerHTML = `🛒 Warenkorb: ${currentCart.length} Artikel`;
+                cartSummaryEl.style.display = 'none';
+            }
+            
+            if (currentCart.length > 0) {
+                cartStatus.classList.add('cart-active');
+            } else {
+                cartStatus.classList.remove('cart-active');
+            }
+            
+            if (currentCart.length === 0) {
+                // Empty cart
+                cartContent.innerHTML = '<div class="cart-empty">Keine Produkte im Warenkorb</div>';
+                cartActions.style.display = 'none';
+                cartPanel.classList.remove('has-products');
+                cartSummaryEl.style.display = 'none';
+            } else {
+                // Show products - gruppiert falls summary verfügbar
+                let cartHTML = '';
+                
+                if (summary && summary.groups && summary.groups.length > 0) {
+                    // Gruppierte Anzeige
+                    cartHTML = summary.groups.map(group => `
+                        <div class="cart-item">
+                            <div class="cart-item-info">
+                                <div class="cart-item-name">${group.name}</div>
+                                <div class="cart-item-details">
+                                    ${group.count}x à ${group.price_euro.toFixed(2)}€ | ⌀ ${group.avg_confidence.toFixed(1)}%
+                                </div>
+                            </div>
+                            <div class="cart-item-price">${group.total_price.toFixed(2)}€</div>
+                        </div>
+                    `).join('');
+                } else {
+                    // Einzelne Produkte
+                    cartHTML = currentCart.map(product => `
+                        <div class="cart-item">
+                            <div class="cart-item-info">
+                                <div class="cart-item-name">${product.name}</div>
+                                <div class="cart-item-details">${product.timestamp || 'Zeitstempel unbekannt'} | ${(product.confidence_percent || 0).toFixed(1)}%</div>
+                            </div>
+                            <div class="cart-item-price">${product.price_euro.toFixed(2)}€</div>
+                        </div>
+                    `).join('');
+                }
+                
+                cartContent.innerHTML = cartHTML;
+                cartActions.style.display = 'flex';
+                cartPanel.classList.add('has-products');
+            }
+        }
+
+        function payForCart() {
+            if (currentCart.length === 0) {
+                showNotification('🛒 Warenkorb ist leer', 'warning');
+                return;
+            }
+            
+            console.log('💳 Initiating cart payment...');
+            
+            // Simuliere Gesichtserkennung für Test
+            const testData = {
+                user_name: 'Current User',
+                confidence: 0.95,
+                default_amount: cartTotal,
+                has_products: true,
+                products: currentCart,
+                total_value: cartTotal,
+                summary: cartSummary,
+                source: 'cart_payment_button'
+            };
+            
+            showPaymentDialog(testData);
+        }
+
+        function clearCart() {
+            console.log('🗑️ Clearing cart...');
+            
+            if (socket && socket.connected) {
+                socket.emit('clear_products');
+            } else {
+                // Fallback: REST API
+                fetch('/api/clear_products', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        updateCartDisplay([], 0);
+                        showNotification('🛒 Warenkorb geleert', 'success');
+                    } else {
+                        showNotification('❌ Fehler beim Leeren: ' + (data.error || 'Unbekannt'), 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Clear cart error:', error);
+                    showNotification('❌ Fehler beim Leeren des Warenkorbs', 'error');
+                });
+            }
+        }
+
+        // DEBUG FUNKTIONEN
+        function debugCartStatus() {
+            console.log('🐛 DEBUG: Current cart status');
+            console.log('   Cart items:', currentCart.length);
+            console.log('   Cart total:', cartTotal);
+            console.log('   Cart data:', currentCart);
+            console.log('   Cart summary:', cartSummary);
+            
+            showNotification('🐛 Debug-Info in Konsole', 'info');
+            
+            // Teste REST API direkt
+            fetch('/api/detected_products')
+            .then(response => response.json())
+            .then(data => {
+                console.log('🐛 DEBUG: Direct /api/detected_products response:', data);
+            })
+            .catch(error => {
+                console.error('🐛 DEBUG: API error:', error);
+            });
+            
+            // Teste product_status API
+            fetch('/api/product_status')
+            .then(response => response.json())
+            .then(data => {
+                console.log('🐛 DEBUG: Direct /api/product_status response:', data);
+            })
+            .catch(error => {
+                console.error('🐛 DEBUG: Product status API error:', error);
+            });
+        }
+
+        function drawImageToCanvas(base64Image) {
+            const img = new Image();
+            img.onload = () => {
+                // Clear canvas
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                // Draw image to fit canvas
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                
+                if (!streamActive) {
+                    streamActive = true;
+                    document.getElementById('videoPlaceholder').style.display = 'none';
+                    updateStreamStatus('Stream aktiv', 'success');
+                }
+            };
+            img.src = 'data:image/jpeg;base64,' + base64Image;
+        }
+
+        function switchVideoMethod() {
+            const selector = document.getElementById('methodSelector');
+            const newMethod = selector.value;
+            
+            console.log(`🔄 Switching to method: ${newMethod}`);
+            
+            stopStream();
+            currentMethod = newMethod;
+            
+            showVideoElement(newMethod);
+            updateMethodStatus(newMethod);
+            
+            setTimeout(() => {
+                startStream();
+            }, 1000);
+        }
+
+        function showVideoElement(method) {
+            // Hide all video elements
+            document.getElementById('videoCanvas').style.display = 'none';
+            document.getElementById('streamImage').style.display = 'none';
+            document.getElementById('mjpegStream').style.display = 'none';
+            document.getElementById('websocketImage').style.display = 'none';
+            
+            // Show selected method
+            switch(method) {
+                case 'canvas':
+                    document.getElementById('videoCanvas').style.display = 'block';
+                    break;
+                case 'image':
+                    document.getElementById('streamImage').style.display = 'block';
+                    setupImageStream();
+                    break;
+                case 'mjpeg':
+                    document.getElementById('mjpegStream').style.display = 'block';
+                    setupMJPEGStream();
+                    break;
+                case 'websocket':
+                    document.getElementById('websocketImage').style.display = 'block';
+                    setupWebSocketStream();
+                    break;
+            }
+        }
+
+        function setupImageStream() {
+            const img = document.getElementById('streamImage');
+            const updateImage = () => {
+                if (currentMethod === 'image' && streamActive) {
+                    img.src = `/video_feed?t=${Date.now()}`;
+                    frameCount++;
+                    fpsCounter++;
+                    setTimeout(updateImage, 100); // 10 FPS
+                }
+            };
+            updateImage();
+        }
+
+        function setupMJPEGStream() {
+            const img = document.getElementById('mjpegStream');
+            img.src = '/video_stream'; // MJPEG endpoint
+            
+            img.onload = () => {
+                frameCount++;
+                fpsCounter++;
+                if (!streamActive) {
+                    streamActive = true;
+                    document.getElementById('videoPlaceholder').style.display = 'none';
+                    updateStreamStatus('MJPEG Stream aktiv', 'success');
+                }
+            };
+        }
+
+        function setupWebSocketStream() {
+            // WebSocket for images
+            const ws = new WebSocket(`ws://${window.location.host}/ws`);
+            const img = document.getElementById('websocketImage');
+            
+            ws.onmessage = (event) => {
+                if (currentMethod === 'websocket') {
+                    img.src = 'data:image/jpeg;base64,' + event.data;
+                    frameCount++;
+                    fpsCounter++;
+                }
+            };
+            
+            ws.onopen = () => {
+                console.log('✅ WebSocket connected');
+                if (!streamActive) {
+                    streamActive = true;
+                    document.getElementById('videoPlaceholder').style.display = 'none';
+                    updateStreamStatus('WebSocket Stream aktiv', 'success');
+                }
+            };
+        }
+
+        function startStream() {
+            console.log(`▶️ Starting ${currentMethod} stream...`);
+            streamActive = true;
+            
+            switch(currentMethod) {
+                case 'canvas':
+                    socket.emit('start_video_stream');
+                    break;
+                case 'image':
+                    setupImageStream();
+                    break;
+                case 'mjpeg':
+                    setupMJPEGStream();
+                    break;
+                case 'websocket':
+                    setupWebSocketStream();
+                    break;
+            }
+            
+            updateStreamStatus('Stream gestartet', 'success');
+            showNotification(`📹 ${currentMethod.toUpperCase()} Stream gestartet`, 'success');
+        }
+
+        function stopStream() {
+            console.log('⏹️ Stopping stream...');
+            streamActive = false;
+            
+            if (socket) {
+                socket.emit('stop_video_stream');
+            }
+            
+            document.getElementById('videoPlaceholder').style.display = 'block';
+            updateStreamStatus('Stream gestoppt', 'warning');
+            updateStreamIndicator(false);
+        }
+
+        function takeSnapshot() {
+            let dataURL;
+            
+            switch(currentMethod) {
+                case 'canvas':
+                    dataURL = canvas.toDataURL('image/jpeg');
+                    break;
+                case 'image':
+                case 'mjpeg':
+                case 'websocket':
+                    const activeImg = document.querySelector(`#${currentMethod}Stream, #${currentMethod}Image, #streamImage`);
+                    if (activeImg) {
+                        const tempCanvas = document.createElement('canvas');
+                        const tempCtx = tempCanvas.getContext('2d');
+                        tempCanvas.width = activeImg.naturalWidth || 640;
+                        tempCanvas.height = activeImg.naturalHeight || 480;
+                        tempCtx.drawImage(activeImg, 0, 0);
+                        dataURL = tempCanvas.toDataURL('image/jpeg');
+                    }
+                    break;
+            }
+            
+            if (dataURL) {
+                const a = document.createElement('a');
+                a.href = dataURL;
+                a.download = `face-recognition-cart-${currentMethod}-${Date.now()}.jpg`;
+                a.click();
+                showNotification('📸 Foto gespeichert!', 'success');
+            }
+        }
+
+        function updateConnectionStatus(message, type) {
+            const status = document.getElementById('connectionStatus');
+            status.innerHTML = `🔌 ${message}`;
+            status.className = 'status-item';
+            if (type === 'error') status.classList.add('error');
+        }
+
+        function updateStreamStatus(message, type) {
+            const status = document.getElementById('streamStatus');
+            status.innerHTML = `📹 ${message}`;
+            status.className = 'status-item';
+            if (type === 'error') status.classList.add('error');
+            if (type === 'warning') status.classList.add('warning');
+        }
+
+        function updateMethodStatus(method) {
+            const status = document.getElementById('methodStatus');
+            const methodNames = {
+                canvas: 'Canvas',
+                image: 'Image',
+                mjpeg: 'MJPEG',
+                websocket: 'WebSocket'
+            };
+            status.innerHTML = `🔧 ${methodNames[method]} Method`;
+        }
+
+        function updateStreamIndicator(isActive) {
+            const indicator = document.getElementById('streamIndicator');
+            if (isActive) {
+                indicator.innerHTML = '🟢 LIVE';
+                indicator.className = 'stream-indicator active';
+            } else {
+                indicator.innerHTML = '🔴 OFFLINE';
+                indicator.className = 'stream-indicator';
+            }
+        }
+
+        function updateFpsDisplay() {
+            const now = Date.now();
+            if (now - lastFpsUpdate >= 1000) {
+                document.getElementById('fpsStatus').innerHTML = `📊 ${fpsCounter} FPS`;
+                document.getElementById('currentFps').textContent = fpsCounter;
+                document.getElementById('frameCount').textContent = frameCount;
+                fpsCounter = 0;
+                lastFpsUpdate = now;
+            }
+        }
+
+        function updateRecognitionDisplay(data) {
+            document.getElementById('userName').textContent = data.user_name || 'Suche...';
+            document.getElementById('confidence').textContent = 
+                `Vertrauen: ${(data.confidence * 100).toFixed(1)}%`;
+            document.getElementById('timestamp').textContent = data.timestamp || new Date().toLocaleTimeString();
+            
+            // Color coding
+            const display = document.getElementById('recognitionDisplay');
+            const confidenceEl = document.getElementById('confidence');
+            
+            if (data.face_recognized && data.confidence > 0.6) {
+                display.style.borderColor = '#4CAF50';
+                display.style.background = 'linear-gradient(135deg, #2d4a2d, #3d5a3d)';
+                confidenceEl.style.color = '#4CAF50';
+            } else if (data.face_count > 0) {
+                display.style.borderColor = '#FF9800';
+                display.style.background = 'linear-gradient(135deg, #4a3d2d, #5a4d3d)';
+                confidenceEl.style.color = '#FF9800';
+            } else {
+                display.style.borderColor = '#555';
+                display.style.background = 'linear-gradient(135deg, #2d2d2d, #3d3d3d)';
+                confidenceEl.style.color = '#999';
+            }
+        }
+
+        function drawFaceBoxes(data) {
+            const overlay = document.getElementById('faceOverlay');
+            overlay.innerHTML = '';
+            
+            if (data.faces && data.faces.length > 0) {
+                const videoElement = getCurrentVideoElement();
+                if (!videoElement) return;
+                
+                const rect = videoElement.getBoundingClientRect();
+                const scaleX = rect.width / (videoElement.naturalWidth || videoElement.width || 640);
+                const scaleY = rect.height / (videoElement.naturalHeight || videoElement.height || 480);
+                
+                data.faces.forEach((face) => {
+                    const box = document.createElement('div');
+                    box.className = 'face-box';
+                    
+                    const left = face.box.left * scaleX;
+                    const top = face.box.top * scaleY;
+                    const width = (face.box.right - face.box.left) * scaleX;
+                    const height = (face.box.bottom - face.box.top) * scaleY;
+                    
+                    box.style.left = `${left}px`;
+                    box.style.top = `${top}px`;
+                    box.style.width = `${width}px`;
+                    box.style.height = `${height}px`;
+                    
+                    if (face.confidence > 0.7) {
+                        box.style.borderColor = '#4CAF50';
+                        box.style.boxShadow = '0 0 25px rgba(76, 175, 80, 0.6)';
+                    } else if (face.confidence > 0.4) {
+                        box.style.borderColor = '#FF9800';
+                        box.style.boxShadow = '0 0 25px rgba(255, 152, 0, 0.6)';
+                    } else {
+                        box.style.borderColor = '#f44336';
+                        box.style.boxShadow = '0 0 25px rgba(244, 67, 54, 0.6)';
+                    }
+                    
+                    const label = document.createElement('div');
+                    label.className = 'face-label';
+                    label.textContent = `${face.name} (${(face.confidence * 100).toFixed(0)}%)`;
+                    box.appendChild(label);
+                    
+                    overlay.appendChild(box);
+                });
+            }
+        }
+
+        function getCurrentVideoElement() {
+            switch(currentMethod) {
+                case 'canvas':
+                    return document.getElementById('videoCanvas');
+                case 'image':
+                    return document.getElementById('streamImage');
+                case 'mjpeg':
+                    return document.getElementById('mjpegStream');
+                case 'websocket':
+                    return document.getElementById('websocketImage');
+                default:
+                    return null;
+            }
+        }
+
+        function testPaymentDialog() {
+            const testData = {
+                user_name: 'Michi',
+                confidence: 0.875,
+                default_amount: cartTotal > 0 ? cartTotal : 5,
+                has_products: currentCart.length > 0,
+                products: currentCart,
+                total_value: cartTotal,
+                summary: cartSummary
+            };
+            showPaymentDialog(testData);
+        }
+
+        // ERWEITERTE PAYMENT-FUNKTIONEN
+        function showPaymentDialog(data) {
+            currentPaymentData = data;
+            
+            console.log('💳 Showing payment dialog with data:', data);
+            
+            document.getElementById('paymentUser').textContent = data.user_name;
+            document.getElementById('paymentConfidence').textContent = 
+                `Vertrauen: ${(data.confidence * 100).toFixed(1)}%`;
+            
+            // Produktanzeige
+            const hasProducts = data.has_products && data.products && data.products.length > 0;
+            const paymentProducts = document.getElementById('paymentProducts');
+            const paymentProductsList = document.getElementById('paymentProductsList');
+            const paymentProductTotal = document.getElementById('paymentProductTotal');
+            
+            if (hasProducts) {
+                paymentProducts.style.display = 'block';
+                
+                // Verwende Zusammenfassung falls verfügbar
+                let productHTML = '';
+                if (data.summary && data.summary.groups && data.summary.groups.length > 0) {
+                    productHTML = data.summary.groups.map(group => `
+                        <div class="payment-product-item">
+                            <span>${group.name} (${group.count}x)</span>
+                            <span>${group.total_price.toFixed(2)}€</span>
+                        </div>
+                    `).join('');
+                } else {
+                    productHTML = data.products.map(product => `
+                        <div class="payment-product-item">
+                            <span>${product.name}</span>
+                            <span>${product.price_euro.toFixed(2)}€</span>
+                        </div>
+                    `).join('');
+                }
+                
+                paymentProductsList.innerHTML = productHTML;
+                paymentProductTotal.textContent = `Gesamt: ${data.total_value.toFixed(2)}€`;
+                
+                // Default auf Warenkorb-Bezahlung
+                paymentMode = 'products';
+                selectPaymentMode('products');
+            } else {
+                paymentProducts.style.display = 'none';
+                paymentMode = 'custom';
+                selectPaymentMode('custom');
+            }
+            
+            // Amount setzen
+            const defaultAmount = hasProducts ? data.total_value : (data.default_amount || 5);
+            document.getElementById('paymentAmount').value = defaultAmount;
+            
+            // Quick amounts updaten
+            updateQuickAmounts(defaultAmount);
+            
+            document.getElementById('paymentOverlay').style.display = 'flex';
+        }
+
+        function selectPaymentMode(mode) {
+            paymentMode = mode;
+            
+            // Update UI
+            document.querySelectorAll('.payment-mode').forEach(btn => {
+                btn.classList.remove('selected');
+            });
+            document.getElementById(`mode${mode.charAt(0).toUpperCase() + mode.slice(1)}`).classList.add('selected');
+            
+            // Show/hide custom amount section
+            const customSection = document.getElementById('customAmountSection');
+            if (mode === 'custom') {
+                customSection.style.display = 'block';
+            } else {
+                customSection.style.display = 'none';
+            }
+        }
+
+        function updateQuickAmounts(defaultAmount) {
+            document.querySelectorAll('.quick-amount').forEach(btn => {
+                btn.classList.remove('selected');
+                const amount = parseFloat(btn.textContent.replace('€', ''));
+                if (Math.abs(amount - defaultAmount) < 0.01) {
+                    btn.classList.add('selected');
+                }
+            });
+        }
+
+        function setAmount(amount) {
+            document.getElementById('paymentAmount').value = amount;
+            updateQuickAmounts(amount);
+        }
+
+        function confirmPayment() {
+            if (!currentPaymentData) return;
+            
+            let amount;
+            
+            if (paymentMode === 'products' && currentPaymentData.has_products) {
+                // Verwende Warenkorb-Summe
+                amount = currentPaymentData.total_value;
+                
+                // Sende spezielle Product Payment
+                if (socket) {
+                    socket.emit('pay_for_products', {
+                        user_name: currentPaymentData.user_name
+                    });
+                } else {
+                    fetch('/api/pay_for_products', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ user_name: currentPaymentData.user_name })
+                    });
+                }
+            } else {
+                // Verwende eigenen Betrag
+                amount = parseFloat(document.getElementById('paymentAmount').value);
+                
+                if (socket) {
+                    socket.emit('confirm_payment', {
+                        user_name: currentPaymentData.user_name,
+                        amount: amount,
+                        confidence: currentPaymentData.confidence
+                    });
+                }
+            }
+            
+            hidePaymentDialog();
+            showNotification(`💳 Payment von ${amount.toFixed(2)}€ wird verarbeitet...`, 'info');
+        }
+
+        function cancelPayment() {
+            hidePaymentDialog();
+            showNotification('❌ Payment abgebrochen', 'info');
+        }
+
+        function hidePaymentDialog() {
+            document.getElementById('paymentOverlay').style.display = 'none';
+            currentPaymentData = null;
+        }
+
+        function resetAll() {
+            console.log('🔄 Resetting all...');
+            stopStream();
+            
+            frameCount = 0;
+            fpsCounter = 0;
+            
+            // Warenkorb leeren
+            clearCart();
+            
+            setTimeout(() => {
+                startStream();
+                showNotification('🔄 System und Warenkorb zurückgesetzt', 'info');
+            }, 2000);
+        }
+
+        function updateTimestamp() {
+            document.getElementById('timestamp').textContent = new Date().toLocaleTimeString('de-DE');
+        }
+
+        function showNotification(message, type = 'success') {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.className = `notification ${type}`;
+            notification.style.display = 'block';
+            
+            setTimeout(() => {
+                notification.style.display = 'none';
+            }, 4000);
+        }
+
+        // Initialize when page loads
+        window.addEventListener('load', init);
+        
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
+
+        console.log('🎯 Face Recognition + Warenkorb System ready!');
+        console.log('📋 Available methods: Canvas, Image, MJPEG, WebSocket');
+        console.log('🛒 ERWEITERTE Warenkorb-Integration aktiv');
+        console.log('⌨️  Neue Features:');
+        console.log('   - Live Warenkorb-Anzeige mit Gruppierung');
+        console.log('   - Automatische Produktpreis-Integration (ALLE PRODUKTE)');
+        console.log('   - Erweiterte Payment-Optionen');
+        console.log('   - REST API + Socket.IO Dual-Mode');
+        console.log('   - Debug-Funktionen für Fehlerbehebung');
+    </script>
+</body>
+</html>

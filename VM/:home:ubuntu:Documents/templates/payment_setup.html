@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>IVY Livestream</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            background: #1a1a1a; 
+            color: white;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        
+        .setup-card {
+            background: #2d2d2d;
+            padding: 30px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        
+        .form-group {
+            margin: 20px 0;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #555;
+            border-radius: 5px;
+            background: #3d3d3d;
+            color: white;
+            font-size: 16px;
+        }
+        
+        .btn {
+            background: #4CAF50;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        
+        .btn:hover {
+            background: #45a049;
+        }
+        
+        .btn.secondary {
+            background: #666;
+        }
+        
+        .btn.primary {
+            background: #2196F3;
+        }
+        
+        .btn.primary:hover {
+            background: #1976D2;
+        }
+        
+        .btn.warning {
+            background: #FF9800;
+        }
+        
+        .btn.warning:hover {
+            background: #F57C00;
+        }
+
+        .btn:disabled {
+           background: #444;
+           cursor: not-allowed;
+       }
+       
+       .result {
+           margin: 20px 0;
+           padding: 15px;
+           border-radius: 5px;
+       }
+       
+       .success {
+           background: #4CAF50;
+       }
+       
+       .error {
+           background: #f44336;
+       }
+       
+       .info {
+           background: #2196F3;
+       }
+       
+       .warning {
+           background: #FF9800;
+       }
+       
+       .button-group {
+           display: flex;
+           flex-wrap: wrap;
+           gap: 10px;
+           margin: 20px 0;
+       }
+       
+       .user-item {
+           background: #3d3d3d;
+           padding: 15px;
+           margin: 10px 0;
+           border-radius: 5px;
+           display: flex;
+           justify-content: space-between;
+           align-items: center;
+       }
+       
+       .user-info {
+           flex-grow: 1;
+       }
+       
+       .user-status {
+           font-size: 0.9em;
+           opacity: 0.8;
+       }
+       
+       .loading {
+           opacity: 0.6;
+           pointer-events: none;
+       }
+       
+       .step-indicator {
+           background: #333;
+           padding: 10px;
+           border-radius: 5px;
+           margin: 10px 0;
+           font-size: 0.9em;
+       }
+       
+       .card-info {
+           background: #1a1a1a;
+           padding: 10px;
+           border-radius: 5px;
+           margin: 10px 0;
+           font-family: monospace;
+           font-size: 0.9em;
+       }
+       
+       .instruction-box {
+           background: #333;
+           border-left: 4px solid #2196F3;
+           padding: 15px;
+           margin: 15px 0;
+       }
+       
+       .instruction-box h4 {
+           margin-top: 0;
+           color: #2196F3;
+       }
+   </style>
+</head>
+<body>
+   <div class="container">
+       <h1>IVY Livestream</h1>
+       
+       <div class="setup-card">
+           <h3>User für Payment konfigurieren</h3>
+           
+           <div class="form-group">
+               <label for="userName">User Name:</label>
+               <select id="userName" onchange="checkUserCards()">
+                   <option value="">Wähle einen User...</option>
+                   {% for face in faces %}
+                   <option value="{{ face }}">{{ face }}</option>
+                   {% endfor %}
+               </select>
+           </div>
+           
+           <div class="form-group">
+               <label for="userEmail">Email:</label>
+               <input type="email" id="userEmail" placeholder="user@example.com">
+           </div>
+           
+           <div class="form-group">
+               <label for="paymentAmount">Standard-Betrag (€):</label>
+               <input type="number" id="paymentAmount" value="5.00" step="0.50" min="0.50">
+           </div>
+           
+           <div class="button-group">
+               <button class="btn warning" onclick="completeSetup()">Customer erstellen</button>
+               <button class="btn secondary" onclick="testPaymentSystem()">System testen</button>
+           </div>
+       </div>
+       
+       <div id="cardStatus"></div>
+       <div id="result"></div>
+       
+       <div class="instruction-box">
+           <h4>Anleitung für Payment Method:</h4>
+           <ol>
+               <li>Customer erstellen (Button oben)</li>
+               <li>Stripe Dashboard Link öffnen</li>
+               <li>Customer → <strong>Payment methods</strong> tab</li>
+               <li>→ <strong>Add payment method</strong></li>
+               <li>Test-Karte eingeben: <strong>4242 4242 4242 4242</strong></li>
+               <li>Expiry: <strong>12/28</strong>, CVC: <strong>123</strong></li>
+               <li>→ <strong>Save</strong></li>
+               <li>System ist bereit für automatische Payments!</li>
+           </ol>
+       </div>
+       
+       <div class="setup-card">
+           <h3>Payment-aktivierte User</h3>
+           <div id="userList">
+               <p>Lade User...</p>
+           </div>
+       </div>
+       
+       <div style="text-align: center; margin-top: 30px;">
+           <a href="/" class="btn secondary">Zurück zum Stream</a>
+       </div>
+   </div>
+
+   <script>
+       function completeSetup() {
+           const name = document.getElementById('userName').value;
+           const email = document.getElementById('userEmail').value;
+           const amount = parseFloat(document.getElementById('paymentAmount').value) * 100;
+           
+           if (!name) {
+               showResult('Bitte einen User auswählen', 'error');
+               return;
+           }
+           
+           showResult('Erstelle Stripe Customer...', 'info');
+           showStep('Customer wird erstellt...');
+           
+           fetch(`/payment/setup-complete/${name}`, {
+               method: 'POST',
+               headers: {
+                   'Content-Type': 'application/json',
+               },
+               body: JSON.stringify({
+                   email: email || `${name}@example.com`,
+                   amount: amount
+               })
+           })
+           .then(response => response.json())
+           .then(data => {
+               if (data.success) {
+                   showStep('Customer erfolgreich erstellt!');
+                   showResult(`✅ ${data.message}`, 'success');
+                   showResult(`Customer ID: ${data.customer_id} | Betrag: ${data.amount}€`, 'info');
+                   
+                   if (data.stripe_dashboard_url) {
+                       showResult(`
+                           <div class="instruction-box">
+                               <h4>Nächster Schritt - Payment Method hinzufügen:</h4>
+                               <p><strong>1.</strong> <a href="${data.stripe_dashboard_url}" target="_blank" style="color: white; text-decoration: underline;">Stripe Dashboard öffnen</a></p>
+                               <p><strong>2.</strong> Payment methods → Add payment method</p>
+                               <div class="card-info">
+                                   Karte: <strong>4242 4242 4242 4242</strong><br>
+                                   Expiry: <strong>12/28</strong><br>
+                                   CVC: <strong>123</strong>
+                               </div>
+                               <p><strong>3.</strong> Save klicken</p>
+                               <p><strong>4.</strong> System ist bereit für Payment-Dialoge!</p>
+                           </div>
+                       `, 'info');
+                   }
+                   
+                   loadPaymentUsers();
+               } else {
+                   showResult(`❌ Fehler: ${data.error}`, 'error');
+               }
+           })
+           .catch(error => {
+               showResult(`❌ Netzwerk-Fehler: ${error}`, 'error');
+           });
+       }
+       
+       function checkUserCards() {
+           const name = document.getElementById('userName').value;
+           
+           if (!name) {
+               document.getElementById('cardStatus').innerHTML = '';
+               return;
+           }
+           
+           fetch(`/payment/check-cards/${name}`)
+           .then(response => response.json())
+           .then(data => {
+               const cardStatus = document.getElementById('cardStatus');
+               
+               if (data.has_cards) {
+                   const cardList = data.cards.map(card => 
+                       `${card.brand.toUpperCase()} ****${card.last4} (${card.exp_month}/${card.exp_year})`
+                   ).join('<br>');
+                   
+                   cardStatus.innerHTML = `
+                       <div class="result success">
+                           ✅ ${name} hat ${data.card_count} Payment Method(s):<br>
+                           ${cardList}<br>
+                           <strong>Bereit für automatische Payments!</strong>
+                       </div>
+                   `;
+               } else {
+                   cardStatus.innerHTML = `
+                       <div class="result warning">
+                           ⚠️ ${name} hat keine Payment Methods<br>
+                           ${data.message || 'Payment Method im Stripe Dashboard hinzufügen'}
+                       </div>
+                   `;
+               }
+           })
+           .catch(error => {
+               document.getElementById('cardStatus').innerHTML = `
+                   <div class="result error">❌ Fehler beim Prüfen der Payment Methods</div>
+               `;
+           });
+       }
+       
+       function testPaymentSystem() {
+           showResult('Teste Payment-System...', 'info');
+           
+           fetch('/config')
+           .then(response => response.json())
+           .then(data => {
+               let status = `
+                   <strong>System-Status:</strong><br>
+                   Stripe: ${data.stripe_configured ? '✅' : '❌'} (${data.stripe_key_type})<br>
+                   Gesichter: ${data.known_faces_count} geladen<br>
+                   Datenbank: ${data.database_exists ? '✅' : '❌'}
+               `;
+               showResult(status, 'info');
+           });
+           
+           fetch('/payment/users')
+           .then(response => response.json())
+           .then(data => {
+               const readyUsers = data.users.filter(u => u.payment_enabled && u.stripe_customer_id.startsWith('cus_'));
+               showResult(`${readyUsers.length} User bereit für Payments`, readyUsers.length > 0 ? 'success' : 'warning');
+           });
+       }
+       
+       function loadPaymentUsers() {
+           fetch('/payment/users')
+           .then(response => response.json())
+           .then(data => {
+               const userList = document.getElementById('userList');
+               if (data.users.length === 0) {
+                   userList.innerHTML = '<p>Keine Payment-User konfiguriert</p>';
+                   return;
+               }
+               
+               userList.innerHTML = data.users.map(user => {
+                   const hasCustomer = user.stripe_customer_id.startsWith('cus_');
+                   const statusColor = hasCustomer && user.payment_enabled ? '#4CAF50' : (user.payment_enabled ? '#FF9800' : '#f44336');
+                   const statusText = hasCustomer && user.payment_enabled ? '✅ Customer erstellt' : (user.payment_enabled ? '⚠️ Demo Customer' : '❌ Inaktiv');
+                   
+                   return `
+                       <div class="user-item">
+                           <div class="user-info">
+                               <strong>${user.name}</strong><br>
+                               <div class="user-status">${user.email} | ${user.default_amount}€ pro Scan</div>
+                               <div class="user-status">Customer: ${user.stripe_customer_id}</div>
+                           </div>
+                           <div>
+                               <span style="color: ${statusColor};">
+                                   ${statusText}
+                               </span>
+                               ${user.payment_enabled ? 
+                                   `<button class="btn" style="margin-left: 10px; padding: 5px 10px;" onclick="disablePayment('${user.name}')">Deaktivieren</button>` : 
+                                   ''
+                               }
+                           </div>
+                       </div>
+                   `;
+               }).join('');
+           })
+           .catch(error => {
+               document.getElementById('userList').innerHTML = '<p>❌ Fehler beim Laden der User</p>';
+           });
+       }
+       
+       function disablePayment(name) {
+           if (confirm(`Payment für ${name} deaktivieren?`)) {
+               fetch(`/payment/disable/${name}`, {
+                   method: 'POST'
+               })
+               .then(response => response.json())
+               .then(data => {
+                   if (data.success) {
+                       showResult(`✅ Payment für ${name} deaktiviert`, 'success');
+                       loadPaymentUsers();
+                   } else {
+                       showResult(`❌ Fehler beim Deaktivieren`, 'error');
+                   }
+               });
+           }
+       }
+       
+       function showResult(message, type) {
+           const result = document.getElementById('result');
+           result.innerHTML = `<div class="result ${type}">${message}</div>`;
+           setTimeout(() => {
+               if (result.innerHTML.includes(message.substring(0, 50))) {
+                   result.innerHTML = '';
+               }
+           }, 10000);
+       }
+       
+       function showStep(message) {
+           const result = document.getElementById('result');
+           const existing = result.innerHTML;
+           result.innerHTML = existing + `<div class="step-indicator">${message}</div>`;
+       }
+       
+       // Initial laden
+       loadPaymentUsers();
+       
+       // Auto-refresh User-Liste alle 30 Sekunden
+       setInterval(loadPaymentUsers, 30000);
+       
+       // User Cards automatisch prüfen wenn User geändert wird
+       document.getElementById('userName').addEventListener('change', checkUserCards);
+   </script>
+</body>
+</html>

@@ -1,0 +1,81 @@
+// OpenHAB Rule: FAY LED Stage Control
+// Datei: /etc/openhab/rules/fay_stage_led.rules
+
+rule "FAY Stage-based LED Control"
+when
+    // Reagiere auf MQTT Topics vom ESP32
+    Channel "mqtt:topic:embedded-mqtt-broker:fay_node_product_selection" triggered or
+    Channel "mqtt:topic:embedded-mqtt-broker:fay_node_payment_method" triggered or
+    Channel "mqtt:topic:embedded-mqtt-broker:fay_node_menu_status" triggered
+then
+    logInfo("FAY_STAGE", "Stage change detected")
+    
+    try {
+        // Hole aktuelle Werte
+        val productSelection = fay_node_product_selection.state.toString
+        val paymentMethod = fay_node_payment_method.state.toString
+        val menuStatus = fay_node_menu_status.state.toString
+        
+        logInfo("FAY_STAGE", "Product: " + productSelection + ", Payment: " + paymentMethod + ", Menu: " + menuStatus)
+        
+        var ledCommand = ""
+        
+        // Stage-basierte LED-Steuerung
+        if (productSelection == "PRODUCT_RECOGNITION") {
+            // Produkterkennung läuft → Gelb (Warten)
+            ledCommand = "waiting"
+            logInfo("FAY_STAGE", "Product recognition active - LED: WAITING")
+            
+        } else if (paymentMethod == "FACE_RECOGNITION") {
+            // Gesichtserkennung läuft → Blau (Processing)
+            ledCommand = "idle"
+            logInfo("FAY_STAGE", "Face recognition active - LED: IDLE")
+            
+        } else if (paymentMethod == "CASH") {
+            // Bar-Zahlung → Grün (Erfolg)
+            ledCommand = "success"
+            logInfo("FAY_STAGE", "Cash payment selected - LED: SUCCESS")
+            
+        } else {
+            // Standard-Zustand → Blau (Bereit)
+            ledCommand = "idle"
+            logInfo("FAY_STAGE", "Default state - LED: IDLE")
+        }
+        
+        // MQTT Command an ESP32 senden
+        val mqttActions = getActions("mqtt", "mqtt:broker:embedded-mqtt-broker")
+        if (mqttActions !== null) {
+            mqttActions.publishMQTT("fay_node/led/status", ledCommand)
+            logInfo("FAY_STAGE", "Sent LED command: " + ledCommand)
+        } else {
+            logError("FAY_STAGE", "MQTT Actions not available")
+        }
+        
+    } catch (Exception e) {
+        logError("FAY_STAGE", "Error in stage LED control: " + e.getMessage)
+    }
+end
+
+// Alternative: Menu State basierte Steuerung
+rule "FAY Menu State LED Control"
+when
+    Item fay_node_menu_state changed
+then
+    val menuState = fay_node_menu_state.state as Number
+    
+    var ledCommand = ""
+    
+    switch menuState.intValue {
+        case 0: ledCommand = "idle"      // Willkommen → Blau
+        case 1: ledCommand = "waiting"   // Scannen → Gelb  
+        case 2: ledCommand = "idle"      // Hauptmenü → Blau
+        case 3: ledCommand = "waiting"   // FAY Zahlung → Gelb
+        case 4: ledCommand = "success"   // Bar Zahlung → Grün
+        default: ledCommand = "idle"
+    }
+    
+    logInfo("FAY_MENU", "Menu state " + menuState + " → LED: " + ledCommand)
+    
+    val mqttActions = getActions("mqtt", "mqtt:broker:embedded-mqtt-broker")
+    mqttActions.publishMQTT("fay_node/led/status", ledCommand)
+end

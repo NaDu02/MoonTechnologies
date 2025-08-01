@@ -1,0 +1,67 @@
+Werkzeug appears to be used in a production deployment. Consider switching to a production web server instead.
+✓ SIFT initialisiert
+
+=== LADE 10 PRODUCT MODELS MIT PREISEN ===
+✓ Model 0: Product_0 - 34013 keypoints - 0.99€
+✓ 1 Product Models mit Preisen geladen
+✓ Output files initialized:
+  - Products: ./detected_products.txt
+  - Session:  ./current_session.json
+Starte Product Recognition Stream Server mit Preissystem...
+
+=== LADE 10 PRODUCT MODELS MIT PREISEN ===
+✓ Model 0: Product_0 - 34013 keypoints - 0.99€
+✓ 1 Product Models mit Preisen geladen
+
+💰 PREISSYSTEM AKTIV:
+   Model 0: Product_0 = 0.99€
+
+============================================================
+PRODUCT RECOGNITION STREAM SERVER MIT PREISSYSTEM
+============================================================
+Models geladen: 1
+Output-Datei: ./detected_products.txt
+Session-Datei: ./current_session.json
+Server läuft auf http://0.0.0.0:5000
+
+API Endpoints:
+  GET  /health                     - Server-Status mit Preisen
+  GET  /models                     - Alle Models mit Preisen
+  GET  /session_summary            - Session-Zusammenfassung
+  GET  /detected_products          - Erkannte Produkte aus Datei
+  POST /reset_session              - Session zurücksetzen
+  POST /add_model                  - Neues Model hinzufügen
+  POST /connect_stream             - Stream verbinden
+  POST /disconnect_stream          - Stream trennen
+  GET  /stream_frame               - Aktueller Frame
+  GET  /metrics                    - Live-Metriken mit Preisen
+
+Web Interface: http://localhost:5000
+
+📄 AUSGABE-DATEIEN:
+   txt: ./detected_products.txt
+   json: ./current_session.json
+ * Serving Flask app 'product_recog'
+ * Debug mode: off
+[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://141.72.12.186:5000
+[33mPress CTRL+C to quit[0m
+141.72.126.36 - - [01/Aug/2025 10:16:38] "GET /socket.io/?EIO=4&transport=polling&t=PXb8ZiV HTTP/1.1" 200 -
+141.72.126.36 - - [01/Aug/2025 10:16:39] "POST /socket.io/?EIO=4&transport=polling&t=PXb8Zj3&sid=nDbiLj1tTEDE7svpAAAA HTTP/1.1" 200 -
+141.72.126.36 - - [01/Aug/2025 10:16:39] "GET /socket.io/?EIO=4&transport=polling&t=PXb8Zj6&sid=nDbiLj1tTEDE7svpAAAA HTTP/1.1" 200 -
+141.72.126.36 - - [01/Aug/2025 10:16:39] "GET / HTTP/1.1" 200 -
+141.72.126.36 - - [01/Aug/2025 10:16:39] "GET /socket.io/?EIO=4&transport=polling&t=PXb8Zpd HTTP/1.1" 200 -
+141.72.126.36 - - [01/Aug/2025 10:16:39] "GET /models HTTP/1.1" 200 -
+141.72.126.36 - - [01/Aug/2025 10:16:39] "POST /socket.io/?EIO=4&transport=polling&t=PXb8Zpx&sid=tOYK2O2INr0FKG8zAAAC HTTP/1.1" 200 -
+141.72.126.36 - - [01/Aug/2025 10:16:39] "GET /socket.io/?EIO=4&transport=polling&t=PXb8Zpy&sid=tOYK2O2INr0FKG8zAAAC HTTP/1.1" 200 -
+141.72.126.36 - - [01/Aug/2025 10:16:39] "GET /socket.io/?EIO=4&transport=polling&t=PXb8Zq3 HTTP/1.1" 200 -
+141.72.126.36 - - [01/Aug/2025 10:16:39] "GET /models HTTP/1.1" 200 -
+141.72.126.36 - - [01/Aug/2025 10:16:39] "GET /socket.io/?EIO=4&transport=polling&t=PXb8ZqK&sid=tOYK2O2INr0FKG8zAAAC HTTP/1.1" 200 -
+141.72.126.36 - - [01/Aug/2025 10:16:39] "POST /socket.io/?EIO=4&transport=polling&t=PXb8ZqT&sid=IEoXkLcBFK_mRPOxAAAE HTTP/1.1" 200 -
+141.72.126.36 - - [01/Aug/2025 10:16:39] "GET /socket.io/?EIO=4&transport=polling&t=PXb8ZqT.0&sid=IEoXkLcBFK_mRPOxAAAE HTTP/1.1" 200 -
+141.72.126.36 - - [01/Aug/2025 10:16:40] "GET /socket.io/?EIO=4&transport=polling&t=PXb8aBl HTTP/1.1" 200 -
+141.72.126.36 - - [01/Aug/2025 10:16:41] "POST /socket.io/?EIO=4&transport=polling&t=PXb8aCH&sid=Faj_Tp7yZS3d--ftAAAG HTTP/1.1" 200 -
+141.72.126.36 - - [01/Aug/2025 10:16:41] "GET /socket.io/?EIO=4&transport=polling&t=PXb8aCI&sid=Faj_Tp7yZS3d--ftAAAG HTTP/1.1" 200 -
+141.72.16.196 - - [01/Aug/2025 10:16:41] "GET /socket.io/?transport=polling&EIO=4&t=1754043401.1294591 HTTP/1.1" 200 -

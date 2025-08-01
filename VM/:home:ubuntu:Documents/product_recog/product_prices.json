@@ -1,0 +1,33 @@
+{
+  "products": {
+    "0": {
+      "name": "Bären Marke Milch",
+      "price_euro": 1.89,
+      "enabled": true
+    },
+    "1": {
+      "name": "Coca Cola Dose",
+      "price_euro": 1.49,
+      "enabled": true
+    },
+    "2": {
+      "name": "Red Bull",
+      "price_euro": 1.99,
+      "enabled": true
+    },
+    "3": {
+      "name": "Nutella",
+      "price_euro": 3.49,
+      "enabled": true
+    },
+    "4": {
+      "name": "iPhone 14",
+      "price_euro": 999.00,
+      "enabled": false
+    }
+  },
+  "settings": {
+    "confidence_threshold": 0.7,
+    "notify_face_system": true
+  }
+}
