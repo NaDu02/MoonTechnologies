@@ -6,15 +6,21 @@ Pillow>=10.4.0
 
 # Network Communication
 requests>=2.20
+
+# WebSocket Communication (if needed for real-time features)
 websockets>=12.0
 
-# Payment Integration (for testing)
+# Payment Integration (for testing/demo purposes)
 stripe>=6.6.0
 
-# Audio (for notifications)
+# Audio (for notifications/feedback)
 pygame>=2.5.0
 
-# System & Hardware specific
-# Note: Additional Pi-specific packages may be needed:
+# Built-in modules (no installation needed)
+# cv2, time, os, requests
+
+# Hardware-specific notes:
+# For Raspberry Pi camera support, you may also need:
 # sudo apt-get install python3-opencv
 # sudo apt-get install libcamera-apps
+# sudo apt-get install python3-picamera2
