@@ -1,0 +1,544 @@
+esphome:
+  name: fay_node
+
+esp32:
+  board: nodemcu-32s
+  framework:
+    type: esp-idf
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+  password: ""
+
+ota:
+  - platform: esphome
+    password: ""
+
+wifi:
+  ssid: "eduroam"
+  password: "---Passwort hier eingeben---"
+  eap:
+      identity: "s221933@student.dhbw-mannheim.de"
+      username: "s221933@student.dhbw-mannheim.de"
+      password: "---Passwort hier eingeben---"
+  manual_ip:
+    static_ip: 141.72.132.185
+    gateway: 141.72.16.1
+    subnet: 255.255.255.0
+    
+
+  #ssid: "IoT20250717"
+  #password: "Arktis-sieben-Kobalt2"
+  #manual_ip:
+  #  static_ip: 141.72.16.184
+  #  gateway: 141.72.16.1
+  # subnet: 255.255.255.0
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Fay Node Fallback Hotspot"
+    password: "vkjUbaGVunht"
+
+mqtt:
+  broker: 141.72.12.186
+  port: 1883
+  topic_prefix: fay_node
+  discovery: true
+  discovery_prefix: homeassistant
+  discovery_retain: true
+  birth_message:
+    topic: fay_node/status
+    payload: online
+  will_message:
+    topic: fay_node/status
+    payload: offline
+  on_message:
+    - topic: fay_node/led/status
+      then:
+        - lambda: |-
+            auto call = id(rgb_lampe).turn_on();
+            call.set_brightness(1.0);
+            
+            std::string message = x;
+            ESP_LOGI("mqtt", "LED Status received: %s", message.c_str());
+            
+            if (message == "success") {
+              // Grün für erfolgreiche FAY Bezahlung
+              call.set_rgb(0, 1.0, 0.0);
+              ESP_LOGI("main", "LED: Success (Green)");
+              // Success Sound - fröhlicher Rhythmus (kurz-kurz-lang)
+              auto buzzer = id(buzzer_pwm);
+              buzzer->set_level(0.8);
+              delay(100);
+              buzzer->set_level(0.0);
+              delay(80);
+              buzzer->set_level(0.8);
+              delay(100);
+              buzzer->set_level(0.0);
+              delay(80);
+              buzzer->set_level(0.8);
+              delay(400);
+              buzzer->set_level(0.0);
+              
+            } else if (message == "error") {
+              // Rot für fehlgeschlagene Bezahlung
+              call.set_rgb(1.0, 0.0, 0.0);
+              ESP_LOGI("main", "LED: Error (Red)");
+              // Error Sound - langsame, eindringliche Warnung
+              delay(200);
+              for (int i = 0; i < 3; i++) {
+                auto buzzer = id(buzzer_pwm);
+                buzzer->set_level(0.9);
+                delay(300);  // Längere Pieps
+                buzzer->set_level(0.0);
+                delay(200);  // Längere Pausen
+              }
+              
+            } else if (message == "waiting") {
+              // Gelb für Warten/Processing
+              call.set_rgb(1.0, 1.0, 0.0);
+              ESP_LOGI("main", "LED: Waiting (Yellow)");
+              // Waiting Sound - doppel-piep
+              auto buzzer = id(buzzer_pwm);
+              buzzer->set_level(0.6);
+              delay(80);
+              buzzer->set_level(0.0);
+              delay(60);
+              buzzer->set_level(0.6);
+              delay(80);
+              buzzer->set_level(0.0);
+              
+            } else if (message == "idle") {
+              // Blau für Bereitschaft
+              call.set_rgb(0, 0, 1.0);
+              ESP_LOGI("main", "LED: Idle (Blue)");
+            } else {
+              ESP_LOGW("main", "Unknown LED status: %s", message.c_str());
+            }
+            
+            call.perform();
+    - topic: fay_node/buzzer/trigger
+      then:
+        - lambda: |-
+            std::string sound = x;
+            auto buzzer = id(buzzer_pwm);
+            ESP_LOGI("mqtt", "Manual buzzer trigger: %s", sound.c_str());
+            
+            if (sound == "success") {
+              // Success Sound
+              buzzer->set_level(0.8);
+              delay(100); buzzer->set_level(0.0); delay(80);
+              buzzer->set_level(0.8);
+              delay(100); buzzer->set_level(0.0); delay(80);
+              buzzer->set_level(0.8);
+              delay(400); buzzer->set_level(0.0);
+            } else if (sound == "error") {
+              // Error Sound
+              for (int i = 0; i < 3; i++) {
+                buzzer->set_level(0.9);
+                delay(300);
+                buzzer->set_level(0.0);
+                delay(200);
+              }
+            } else if (sound == "test") {
+              // Einfacher Test-Piep
+              buzzer->set_level(0.7);
+              delay(200);
+              buzzer->set_level(0.0);
+            }
+    - topic: fay_node/payment/result
+      then:
+        - lambda: |-
+            std::string result = x;
+            ESP_LOGI("mqtt", "Payment result received: %s", result.c_str());
+            
+            if (id(menu_state) == 3) {
+              // Nur wenn wir im FAY-Zahlungsmodus sind
+              if (result == "success") {
+                // Bezahlung erfolgreich - zu Erfolg-Screen wechseln
+                id(countdown_timer) = 0;
+                id(menu_state) = 5;  // Erfolg-Anzeige
+                id(result_timer) = 10;  // 10 Sekunden Erfolg anzeigen
+                ESP_LOGI("main", "FAY payment successful - showing success screen");
+                
+              } else if (result == "error") {
+                // Bezahlung fehlgeschlagen - zu Fehler-Screen wechseln
+                id(countdown_timer) = 0;
+                id(menu_state) = 6;  // Fehler-Anzeige
+                id(result_timer) = 10;  // 10 Sekunden Fehler anzeigen
+                ESP_LOGI("main", "FAY payment failed - showing error screen");
+              }
+            }
+
+web_server:
+  port: 80
+
+# Globale Variablen für Menü-Status
+globals:
+  - id: menu_state
+    type: int
+    restore_value: false
+    initial_value: '0'  # 0=Willkommen, 1=Scannen, 2=Hauptmenü, 3=FAY Gesichtserkennung, 4=Karten Zahlung, 5=Erfolg, 6=Fehler
+  - id: menu_selection
+    type: int
+    restore_value: false
+    initial_value: '0'  # 0=Fay, 1=Karte
+  - id: countdown_timer
+    type: int
+    restore_value: false
+    initial_value: '0'
+  - id: result_timer
+    type: int
+    restore_value: false
+    initial_value: '0'  # Timer für Erfolg/Fehler-Anzeige
+  - id: buzzer_active
+    type: bool
+    restore_value: false
+    initial_value: 'false'
+  - id: mqtt_counter
+    type: int
+    restore_value: false
+    initial_value: '0'
+  - id: last_mqtt_time
+    type: int
+    restore_value: false
+    initial_value: '0'
+
+# Scripts für verschiedene Sounds (wie in funktionierender Version)
+script:
+  - id: play_success
+    then:
+      - output.ledc.set_frequency:
+          id: buzzer_pwm
+          frequency: 784Hz
+      - output.turn_on: buzzer_pwm
+      - delay: 200ms
+      - output.turn_off: buzzer_pwm
+      - delay: 100ms
+      - output.ledc.set_frequency:
+          id: buzzer_pwm
+          frequency: 659Hz
+      - output.turn_on: buzzer_pwm
+      - delay: 200ms
+      - output.turn_off: buzzer_pwm
+
+  - id: play_error
+    then:
+      - lambda: |-
+          for (int i = 0; i < 3; i++) {
+            auto call = id(buzzer_pwm);
+            call->set_frequency(400);
+            call->set_level(0.5);
+            delay(100);
+            call->set_level(0.0);
+            delay(100);
+          }
+
+  - id: play_waiting
+    then:
+      - output.ledc.set_frequency:
+          id: buzzer_pwm
+          frequency: 600Hz
+      - output.turn_on: buzzer_pwm
+      - delay: 100ms
+      - output.turn_off: buzzer_pwm
+
+sensor:
+  - platform: adc
+    id: joystick_x
+    name: "Joystick X-Achse"
+    pin: GPIO33
+    attenuation: 12db
+    update_interval: 100ms
+    filters:
+      - lambda: |-
+          const float mid = 1.9;
+          return x - mid;
+
+  - platform: adc
+    id: joystick_y
+    name: "Joystick Y-Achse"
+    pin: GPIO32
+    attenuation: 12db
+    update_interval: 200ms
+    filters:
+      - lambda: |-
+          const float mid = 1.9;
+          return x - mid;
+    on_value:
+      then:
+        - lambda: |-
+            // Nur im Hauptmenü (menu_state == 2) auf Y-Bewegung reagieren
+            if (id(menu_state) == 2) {
+              float y_value = x;
+              if (y_value < -0.5) {
+                // Nach oben -> Karten auswählen
+                id(menu_selection) = 1;
+              } else if (y_value > 0.5) {
+                // Nach unten -> Fay auswählen
+                id(menu_selection) = 0;
+              }
+            }
+
+binary_sensor:
+  - platform: gpio
+    id: joystick_click
+    pin:
+      number: GPIO26
+      mode: INPUT_PULLUP
+      inverted: true
+    name: "Joystick Klick"
+    on_press:
+      then:
+        - lambda: |-
+            int old_state = id(menu_state);
+            
+            if (id(menu_state) == 0) {
+              // Willkommensseite -> zur Scan-Seite
+              id(menu_state) = 1;
+              ESP_LOGI("main", "First button press - starting product recognition");
+              
+            } else if (id(menu_state) == 1) {
+              // Scan-Seite -> zum Hauptmenü (Zahlungsauswahl)
+              id(menu_state) = 2;
+              
+            } else if (id(menu_state) == 2) {
+              // Hauptmenü: Auswahl bestätigen
+              if (id(menu_selection) == 0) {
+                // Fay ausgewählt -> FAY Zahlung
+                id(menu_state) = 3;
+                id(countdown_timer) = 60;  // 60 Sekunden Countdown
+                ESP_LOGI("main", "FAY payment selected - starting face recognition");
+                
+              } else {
+                // Karten ausgewählt -> Karten Zahlung
+                id(menu_state) = 4;
+                ESP_LOGI("main", "Cash payment selected");
+              }
+            } else if (id(menu_state) == 3 || id(menu_state) == 4) {
+              // Von FAY oder Karten Zahlung zurück
+              if (id(menu_state) == 3) {
+                // Von FAY zurück zur Zahlungsauswahl
+                id(menu_state) = 2;
+              } else {
+                // Von Karten Zahlung zurück zur Startseite
+                id(menu_state) = 0;
+              }
+              id(menu_selection) = 0;
+              id(countdown_timer) = 0;
+            }
+        # Success Sound ausführen
+        - script.execute: play_success
+        # MQTT Messages senden basierend auf neuem Zustand
+        - delay: 100ms  # Kurz warten damit der state aktualisiert ist
+        - lambda: |-
+            if (id(menu_state) == 1) {
+              // Erster Button-Press -> Product Recognition
+              ESP_LOGI("mqtt", "Publishing PRODUCT_RECOGNITION");
+              auto mqtt_client = mqtt::global_mqtt_client;
+              if (mqtt_client != nullptr && mqtt_client->is_connected()) {
+                mqtt_client->publish("fay_node/product/selection", "PRODUCT_RECOGNITION");
+                ESP_LOGI("mqtt", "Published: fay_node/product/selection = PRODUCT_RECOGNITION");
+              }
+            } else if (id(menu_state) == 3) {
+              // FAY gewählt -> Face Recognition
+              ESP_LOGI("mqtt", "Publishing FACE_RECOGNITION");
+              auto mqtt_client = mqtt::global_mqtt_client;
+              if (mqtt_client != nullptr && mqtt_client->is_connected()) {
+                mqtt_client->publish("fay_node/payment/method", "FACE_RECOGNITION");
+                ESP_LOGI("mqtt", "Published: fay_node/payment/method = FACE_RECOGNITION");
+              }
+            } else if (id(menu_state) == 4) {
+              // Cash gewählt
+              ESP_LOGI("mqtt", "Publishing CASH");
+              auto mqtt_client = mqtt::global_mqtt_client;
+              if (mqtt_client != nullptr && mqtt_client->is_connected()) {
+                mqtt_client->publish("fay_node/payment/method", "CASH");
+                ESP_LOGI("mqtt", "Published: fay_node/payment/method = CASH");
+              }
+            }
+
+# Timer für Countdown und MQTT Status
+interval:
+  - interval: 1s
+    then:
+      - mqtt.publish:
+          topic: fay_node/menu/status
+          payload: !lambda |-
+            static char payload[150];
+            snprintf(payload, sizeof(payload), 
+              "{\"menu_state\": %d, \"selection\": %d, \"countdown\": %d}", 
+              id(menu_state), id(menu_selection), id(countdown_timer));
+            return std::string(payload);
+      # LED-Status basierend auf menu_state setzen
+      - lambda: |-
+          std::string ledStatus = "";
+          
+          if (id(menu_state) == 0) {
+            ledStatus = "idle";        // Willkommen → Blau
+          } else if (id(menu_state) == 1) {
+            ledStatus = "waiting";     // Produkterkennung → Gelb
+          } else if (id(menu_state) == 2) {
+            ledStatus = "idle";        // Hauptmenü → Blau  
+          } else if (id(menu_state) == 3) {
+            ledStatus = "waiting";     // FAY Erkennung → Gelb
+          } else if (id(menu_state) == 4) {
+            ledStatus = "success";     // Karten Zahlung → Grün
+          } else if (id(menu_state) == 5) {
+            ledStatus = "success";     // Erfolg → Grün
+          } else if (id(menu_state) == 6) {
+            ledStatus = "error";       // Fehler → Rot
+          }
+          
+          // MQTT LED-Befehl senden
+          auto mqtt_client = mqtt::global_mqtt_client;
+          if (mqtt_client != nullptr && mqtt_client->is_connected()) {
+            mqtt_client->publish("fay_node/led/status", ledStatus);
+            ESP_LOGI("main", "LED Status sent: %s for menu_state: %d", ledStatus.c_str(), id(menu_state));
+          }
+  - interval: 1s
+    then:
+      - lambda: |-
+          // FAY Countdown Timer
+          if (id(menu_state) == 3 && id(countdown_timer) > 0) {
+            id(countdown_timer) = id(countdown_timer) - 1;
+            
+            if (id(countdown_timer) == 0) {
+              // Countdown beendet - timeout, zurück zum Hauptmenü
+              id(menu_state) = 2;
+              id(menu_selection) = 0;
+              ESP_LOGI("main", "FAY timeout - returning to menu");
+            }
+          }
+          
+          // Erfolg/Fehler Timer
+          if ((id(menu_state) == 5 || id(menu_state) == 6) && id(result_timer) > 0) {
+            id(result_timer) = id(result_timer) - 1;
+            
+            if (id(result_timer) == 0) {
+              // Erfolg/Fehler-Anzeige beendet - zurück zum Startbildschirm
+              id(menu_state) = 0;
+              id(menu_selection) = 0;
+              ESP_LOGI("main", "Result display finished - returning to welcome screen");
+            }
+          }
+
+output:
+  - platform: ledc
+    id: red_led
+    pin: GPIO23    # ROT bleibt GPIO23
+    max_power: 50%
+  - platform: ledc
+    id: green_led
+    pin: GPIO21    # GRÜN zurück zu GPIO21
+    max_power: 50%
+  - platform: ledc
+    id: blue_led
+    pin: GPIO22    # BLAU zurück zu GPIO22
+    max_power: 50%
+  # PWM Buzzer Output auf GPIO5 für passiven Buzzer (zurück zu GPIO5)
+  - platform: ledc
+    pin: GPIO5
+    id: buzzer_pwm
+    frequency: 1000Hz
+
+light:
+  - platform: rgb
+    id: rgb_lampe
+    name: "RGB Lampe"
+    red: red_led
+    green: green_led
+    blue: blue_led
+    restore_mode: ALWAYS_ON
+
+switch:
+  - platform: template
+    name: "Play Success"
+    turn_on_action:
+      - script.execute: play_success
+
+i2c:
+  sda: GPIO2
+  scl: GPIO0
+
+display:
+  - platform: lcd_pcf8574
+    id: my_display
+    dimensions: 20x4
+    address: 0x27
+    update_interval: 500ms
+    lambda: |-
+      it.clear();
+      
+      if (id(menu_state) == 0) {
+        // Willkommensseite
+        it.print(0, 0, "Willkommen an der");
+        it.print(0, 1, "Selbstbezahlkasse");
+        it.print(0, 2, "");
+        it.print(0, 3, "Klick: Weiter");
+        
+      } else if (id(menu_state) == 1) {
+        // Scan-Seite
+        it.print(0, 0, "Bitte scannen Sie");
+        it.print(0, 1, "alle Produkte");
+        it.print(0, 2, "");
+        it.print(0, 3, "Klick: Weiter");
+        
+      } else if (id(menu_state) == 2) {
+        // Hauptmenü (Zahlungsauswahl)
+        it.print(0, 0, "Wollen Sie mit FAY");
+        it.print(0, 1, "oder mit Karte zahlen?");
+        
+        // Auswahloptionen mit Markierung
+        if (id(menu_selection) == 0) {
+          it.print(0, 2, "> Fay      Karte");
+        } else {
+          it.print(0, 2, "  Fay    > Karte");
+        }
+        
+        it.print(0, 3, "Klick: Bestatigen");
+        
+      } else if (id(menu_state) == 3) {
+        // FAY Gesichtserkennung
+        it.print(0, 0, "Willkommen bei");
+        it.print(0, 1, "FAY ^-^");
+        
+        if (id(countdown_timer) > 0) {
+          it.print(0, 2, "Gesicht vor Kamera");
+          char countdown_str[21];
+          snprintf(countdown_str, sizeof(countdown_str), "Warten: %d Sekunden", id(countdown_timer));
+          it.print(0, 3, countdown_str);
+        } else {
+          it.print(0, 2, "Timeout erreicht");
+          it.print(0, 3, "Zurück zum Menu...");
+        }
+        
+      } else if (id(menu_state) == 4) {
+        // Karten Zahlung
+        it.print(0, 0, "Karten-Zahlung");
+        it.print(0, 1, "ausgewahlt");
+        it.print(0, 2, "");
+        it.print(0, 3, "Klick: Zur Startseite");
+        
+      } else if (id(menu_state) == 5) {
+        // Erfolg-Screen
+        it.print(0, 0, "    ERFOLG!    ");
+        it.print(0, 1, "Bezahlung war");
+        it.print(0, 2, "erfolgreich!");
+        char timer_str[21];
+        snprintf(timer_str, sizeof(timer_str), "Zuruck in: %d Sek", id(result_timer));
+        it.print(0, 3, timer_str);
+        
+      } else if (id(menu_state) == 6) {
+        // Fehler-Screen
+        it.print(0, 0, "    FEHLER!    ");
+        it.print(0, 1, "Bezahlung");
+        it.print(0, 2, "fehlgeschlagen!");
+        char timer_str[21];
+        snprintf(timer_str, sizeof(timer_str), "Zuruck in: %d Sek", id(result_timer));
+        it.print(0, 3, timer_str);
+      }
+
+captive_portal:

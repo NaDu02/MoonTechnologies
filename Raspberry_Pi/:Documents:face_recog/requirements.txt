@@ -1,0 +1,7 @@
+opencv-python>=4.8.0
+numpy>=1.24.0
+Pillow>=10.4.0
+requests>=2.20
+websockets>=12.0
+stripe>=6.6.0
+pygame>=2.5.0
