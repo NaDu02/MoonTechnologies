@@ -1,0 +1,20 @@
+# Raspberry Pi Requirements - FAY & IVY System
+# Computer Vision & Camera
+opencv-python>=4.8.0
+numpy>=1.24.0
+Pillow>=10.4.0
+
+# Network Communication
+requests>=2.20
+websockets>=12.0
+
+# Payment Integration (for testing)
+stripe>=6.6.0
+
+# Audio (for notifications)
+pygame>=2.5.0
+
+# System & Hardware specific
+# Note: Additional Pi-specific packages may be needed:
+# sudo apt-get install python3-opencv
+# sudo apt-get install libcamera-apps
