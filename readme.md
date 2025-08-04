@@ -1,5 +1,5 @@
 # FAY & IVY - Moon Technologies
-![Moon_Technologies_logo](https://github.com/user-attachments/assets/ad1607b3-7194-47a3-a7f4-08feccc17b75)
+<img width="806" height="100" alt="Bildschirmfoto 2025-08-04 um 14 17 25" src="https://github.com/user-attachments/assets/4f5f99fb-0f09-43f7-a97c-8d7b75224d63" />
 
 
 AI-basierte Self-Checkout-Lösung mit Gesichtserkennung (FAY) und Produkterkennung (IVY).
@@ -70,6 +70,7 @@ python product_recog.py
 
 ## Tech Stack
 
+
 - **Backend**: Python Flask + SocketIO
 - **Payment**: Stripe API
 - **IoT**: MQTT, ESPHome
@@ -79,6 +80,8 @@ python product_recog.py
 
 ## ML-Modelle
 
+<img width="655" height="341" alt="Bildschirmfoto 2025-08-04 um 14 16 10" src="https://github.com/user-attachments/assets/db79a89e-19ad-459e-ae63-a1a37da74e84" />
+
 ### Gesichtserkennung (FAY)
 - **HOG (Histogram of Oriented Gradients)**: Gesichtsdetektion
 - **68 Facial Landmarks**: Preprocessing und Gesichts-Rotation
@@ -87,6 +90,7 @@ python product_recog.py
 
 <img width="1135" height="571" alt="Bildschirmfoto 2025-08-04 um 14 07 38" src="https://github.com/user-attachments/assets/789c2f20-9564-482c-8a29-07970103405d" />
 
+<img width="788" height="957" alt="image" src="https://github.com/user-attachments/assets/e55097d1-a349-41b1-8f66-ff8beed65375" />
 
 ### Produkterkennung (IVY)
 - **SIFT (Scale-Invariant Feature Transform)**: Keypoint-Extraktion aus Produktbildern
