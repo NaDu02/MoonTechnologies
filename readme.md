@@ -80,7 +80,8 @@ python product_recog.py
 
 ## ML-Modelle
 
-<img width="655" height="341" alt="Bildschirmfoto 2025-08-04 um 14 16 10" src="https://github.com/user-attachments/assets/db79a89e-19ad-459e-ae63-a1a37da74e84" />
+<img width="283" height="344" alt="image" src="https://github.com/user-attachments/assets/f94525a7-eaf5-4dc5-b9f4-5acc44f7cc20" />
+
 
 ### Gesichtserkennung (FAY)
 - **HOG (Histogram of Oriented Gradients)**: Gesichtsdetektion
@@ -90,7 +91,7 @@ python product_recog.py
 
 <img width="1135" height="571" alt="Bildschirmfoto 2025-08-04 um 14 07 38" src="https://github.com/user-attachments/assets/789c2f20-9564-482c-8a29-07970103405d" />
 
-<img width="788" height="957" alt="image" src="https://github.com/user-attachments/assets/e55097d1-a349-41b1-8f66-ff8beed65375" />
+<img width="283" height="344" alt="image" src="https://github.com/user-attachments/assets/e55097d1-a349-41b1-8f66-ff8beed65375" />
 
 ### Produkterkennung (IVY)
 - **SIFT (Scale-Invariant Feature Transform)**: Keypoint-Extraktion aus Produktbildern
