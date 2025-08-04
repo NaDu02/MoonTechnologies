@@ -76,6 +76,8 @@ python product_recog.py
 - **IoT**: MQTT, ESPHome
 - **Hardware**: ESP32, Raspberry Pi 4, Kamera-Module
 
+### Architektur
+
 ![Architektur](https://github.com/user-attachments/assets/973c0e2c-83ee-4754-bd4a-3f0f5e97157a)
 
 ## ML-Modelle
@@ -86,6 +88,7 @@ python product_recog.py
 - **Dlib ResNet CNN (Convolutional Neural Network)**: Vortrainiertes Modell für 128-dimensionale Face Encodings
 - **Euklidische Distanzberechnung**: Gesichtsvergleich (99,38% Genauigkeit)
 
+### Dlib ResNET CNN
 <img width="800" height="400" alt="Bildschirmfoto 2025-08-04 um 14 07 38" src="https://github.com/user-attachments/assets/789c2f20-9564-482c-8a29-07970103405d" />
 
 ### Produkterkennung (IVY)
