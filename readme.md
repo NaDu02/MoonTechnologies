@@ -89,9 +89,10 @@ python product_recog.py
 - **Dlib ResNet CNN (Convolutional Neural Network)**: Vortrainiertes Modell für 128-dimensionale Face Encodings
 - **Euklidische Distanzberechnung**: Gesichtsvergleich (99,38% Genauigkeit)
 
-<img width="1135" height="571" alt="Bildschirmfoto 2025-08-04 um 14 07 38" src="https://github.com/user-attachments/assets/789c2f20-9564-482c-8a29-07970103405d" />
+<img width="800" height="400" alt="Bildschirmfoto 2025-08-04 um 14 07 38" src="https://github.com/user-attachments/assets/789c2f20-9564-482c-8a29-07970103405d" />
 
-<img width="283" height="344" alt="image" src="https://github.com/user-attachments/assets/e55097d1-a349-41b1-8f66-ff8beed65375" />
+<img width="283" height="344" alt="image" src="https://github.com/user-attachments/assets/45ab5980-295f-4d86-8360-f6e49498b7e9" />
+
 
 ### Produkterkennung (IVY)
 - **SIFT (Scale-Invariant Feature Transform)**: Keypoint-Extraktion aus Produktbildern
