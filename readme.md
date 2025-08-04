@@ -80,9 +80,6 @@ python product_recog.py
 
 ## ML-Modelle
 
-<img width="283" height="344" alt="image" src="https://github.com/user-attachments/assets/f94525a7-eaf5-4dc5-b9f4-5acc44f7cc20" />
-
-
 ### Gesichtserkennung (FAY)
 - **HOG (Histogram of Oriented Gradients)**: Gesichtsdetektion
 - **68 Facial Landmarks**: Preprocessing und Gesichts-Rotation
@@ -90,9 +87,6 @@ python product_recog.py
 - **Euklidische Distanzberechnung**: Gesichtsvergleich (99,38% Genauigkeit)
 
 <img width="800" height="400" alt="Bildschirmfoto 2025-08-04 um 14 07 38" src="https://github.com/user-attachments/assets/789c2f20-9564-482c-8a29-07970103405d" />
-
-<img width="283" height="344" alt="image" src="https://github.com/user-attachments/assets/45ab5980-295f-4d86-8360-f6e49498b7e9" />
-
 
 ### Produkterkennung (IVY)
 - **SIFT (Scale-Invariant Feature Transform)**: Keypoint-Extraktion aus Produktbildern
