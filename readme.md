@@ -1,4 +1,6 @@
 # FAY & IVY - Moon Technologies
+![Moon_Technologies_logo](https://github.com/user-attachments/assets/ad1607b3-7194-47a3-a7f4-08feccc17b75)
+
 
 AI-basierte Self-Checkout-Lösung mit Gesichtserkennung (FAY) und Produkterkennung (IVY).
 
@@ -73,18 +75,24 @@ python product_recog.py
 - **IoT**: MQTT, ESPHome
 - **Hardware**: ESP32, Raspberry Pi 4, Kamera-Module
 
+![Architektur](https://github.com/user-attachments/assets/973c0e2c-83ee-4754-bd4a-3f0f5e97157a)
+
 ## ML-Modelle
 
 ### Gesichtserkennung (FAY)
 - **HOG (Histogram of Oriented Gradients)**: Gesichtsdetektion
 - **68 Facial Landmarks**: Preprocessing und Gesichts-Rotation
-- **Dlib ResNet CNN**: Vortrainiertes Modell für 128-dimensionale Face Encodings
+- **Dlib ResNet CNN (Convolutional Neural Network)**: Vortrainiertes Modell für 128-dimensionale Face Encodings
 - **Euklidische Distanzberechnung**: Gesichtsvergleich (99,38% Genauigkeit)
+
+<img width="1135" height="571" alt="Bildschirmfoto 2025-08-04 um 14 07 38" src="https://github.com/user-attachments/assets/789c2f20-9564-482c-8a29-07970103405d" />
+
 
 ### Produkterkennung (IVY)
 - **SIFT (Scale-Invariant Feature Transform)**: Keypoint-Extraktion aus Produktbildern
 - **RANSAC (Random Sample Consensus)**: Geometrische Validierung der Matches
 - **Mindestens 8 aufeinanderfolgende Matches**: Erforderlich für sichere Produkterkennung
+
 
 ## Konfiguration
 
