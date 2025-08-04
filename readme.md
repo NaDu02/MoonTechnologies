@@ -1,5 +1,5 @@
 # FAY & IVY - Moon Technologies
-<img width="900" height="100" alt="Bildschirmfoto 2025-08-04 um 14 17 25" src="https://github.com/user-attachments/assets/4f5f99fb-0f09-43f7-a97c-8d7b75224d63" />
+<img width="1330" height="183" alt="Bildschirmfoto 2025-08-04 um 14 21 35" src="https://github.com/user-attachments/assets/0e99df38-a74c-4004-b281-4844f0427d05" />
 
 
 AI-basierte Self-Checkout-Lösung mit Gesichtserkennung (FAY) und Produkterkennung (IVY).
