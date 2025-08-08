@@ -78,6 +78,7 @@ python product_recog.py
 
 ### Architektur
 
+
 ![Architektur](https://github.com/user-attachments/assets/973c0e2c-83ee-4754-bd4a-3f0f5e97157a)
 
 ## ML-Modelle
