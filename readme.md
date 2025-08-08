@@ -13,6 +13,8 @@ AI-basierte Self-Checkout-Lösung mit Gesichtserkennung (FAY) und Produkterkennu
 - **SQLite Datenbanken**: Face encodings & Product recognition data
 - **Stripe Integration**: Test/Live Payment Processing
 
+![Architektur](https://github.com/user-attachments/assets/973c0e2c-83ee-4754-bd4a-3f0f5e97157a)
+
 ## Setup & Start
 
 ### 1. VM Server starten
@@ -75,11 +77,6 @@ python product_recog.py
 - **Payment**: Stripe API
 - **IoT**: MQTT, ESPHome
 - **Hardware**: ESP32, Raspberry Pi 4, Kamera-Module
-
-### Architektur
-
-
-![Architektur](https://github.com/user-attachments/assets/973c0e2c-83ee-4754-bd4a-3f0f5e97157a)
 
 ## ML-Modelle
 
